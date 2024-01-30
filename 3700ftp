@@ -35,10 +35,10 @@ def downloadFile(client, path, local):
     s.connect((ip, port))
     sendMessage(client, 'RETR ' + path + '\r\n')
     with open(local, 'wb') as file:
-        file_data = s.recv(BUFFER_SIZE)
-        while file_data:
-            file.write(file_data)
-            file_data = s.recv(BUFFER_SIZE)
+        fileData = s.recv(BUFFER_SIZE)
+        while fileData:
+            file.write(fileData)
+            fileData = s.recv(BUFFER_SIZE)
         receiveMessage(client)
     receiveMessage(s)
     s.close()
@@ -49,9 +49,9 @@ def uploadFile(client, path, local):
     s.connect((ip, port))
     sendMessage(client, 'STOR ' + path + '\r\n')
     with open(local, 'rb') as file:
-        file_data = file.read(BUFFER_SIZE)
-        while file_data:
-            data_socket.sendall(file_data)
+        fileData = file.read(BUFFER_SIZE)
+        while fileData:
+            s.sendall(fileData)
             s = file.read(BUFFER_SIZE)
     s.close()
 
