@@ -51,8 +51,8 @@ def uploadFile(client, path, local):
     with open(local, 'rb') as file:
         fileData = file.read(BUFFER_SIZE)
         while fileData:
-            s.sendall(fileData)
-            s = file.read(BUFFER_SIZE)
+            s.send(fileData)
+            fileData = file.read(BUFFER_SIZE)
     s.close()
 
 def deleteDir(client, path):
