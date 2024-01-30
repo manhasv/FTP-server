@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+import argparse
+import socket
+import urllib.parse
+
+BUFFER_SIZE = 4096
+
+def openDataChannel(client):
+    response = sendMessage(client, 'PASV\r\n')
+    start = response.find('(')
+    end = response.find(')')
+    numbers = response[start+1:end].split(',')
+
+    # Extract IP address parts
+    ipNum = numbers[:4]
+    ip = '.'.join(ipNum)
+    print(ip)
+    # Calculate port number
+    p1, p2 = int(numbers[4]), int(numbers[5])
+    port = p1 * 256 + p2
+    print(port)
+    return ip, port
+
+def listDir(client, path):
+    ip, port = openDataChannel(client)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, port))
+    sendMessage(client, 'LIST ' + path + '\r\n')
+    receiveMessage(s)
+    s.close()
+
+def downloadFile(client, path, local):
+    ip, port = openDataChannel(client)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, port))
+    sendMessage(client, 'RETR ' + path + '\r\n')
+    with open(local, 'wb') as file:
+        file_data = s.recv(BUFFER_SIZE)
+        while file_data:
+            file.write(file_data)
+            file_data = s.recv(BUFFER_SIZE)
+        receiveMessage(client)
+    receiveMessage(s)
+    s.close()
+
+def uploadFile(client, path, local):
+    ip, port = openDataChannel(client)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, port))
+    sendMessage(client, 'STOR ' + path + '\r\n')
+    with open(local, 'rb') as file:
+        file_data = file.read(BUFFER_SIZE)
+        while file_data:
+            data_socket.sendall(file_data)
+            s = file.read(BUFFER_SIZE)
+    s.close()
+
+def deleteDir(client, path):
+    sendMessage(client, 'DELE ' + path + '\r\n')
+
+def login(client, username, password):
+    sendMessage(client, 'USER ' + username + '\r\n')
+    sendMessage(client, 'PASS ' + password + '\r\n')
+
+def makeDir(client, path):
+    sendMessage(client, 'MKD ' + path + '\r\n')
+
+def removeDir(client, path):
+    sendMessage(client, 'RMD ' + path + '\r\n')
+
+def receiveMessage(sock):
+    response = sock.recv(BUFFER_SIZE).decode()
+    print(response)
+    return response
+
+def sendMessage(sock, command):
+    print("Sending:", command)
+    sock.send(command.encode())
+    response = receiveMessage(sock)
+    return response
+
+
+#./3700ftp2 ls ftp://asvhigh:37b336ec59c0714db1c131c2d419a5577725c4b50a71866cf33de37f40a5a100@ftp.3700.network/
+def main():
+    # Create the parser
+    parser = argparse.ArgumentParser(prog='Project 2',
+                                     description='Read in the username and server to solve a random Wordle puzzle',)
+
+    # Positional arguments
+    parser.add_argument("operation", type=str, help="Name of command")
+    parser.add_argument("arg1", type=str, help="First argument")
+    parser.add_argument('arg2', nargs='?', default=None, help='The second argument (optional)')
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Use the arguments
+    if (args.arg1).startswith(('ftp://')):
+        parsed_url = urllib.parse.urlparse(args.arg1)
+        local = args.arg2
+    else:
+        parsed_url = urllib.parse.urlparse(args.arg2)
+        local = args.arg1
+    hostname = parsed_url.hostname
+    print(hostname)
+    port = parsed_url.port if parsed_url.port else 21
+    print(port)
+    username = parsed_url.username if parsed_url.username else 'anonymous'
+    print(username)
+    password = parsed_url.password if parsed_url.password else ''
+    print(password)
+    path = parsed_url.path
+    print(path)
+ 
+    # set up the client
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    client.connect((hostname, port))
+    response = client.recv(BUFFER_SIZE)
+    print(response)
+
+    # log in with the info
+    login(client, username, password)
+
+    sendMessage(client, 'TYPE I\r\n')
+    sendMessage(client, 'MODE S\r\n')
+    sendMessage(client, 'STRU F\r\n')
+    
+    if (args.operation == 'mkdir'):
+        makeDir(client, path)
+    if (args.operation == 'rmdir'):
+        removeDir(client, path)
+    if (args.operation == 'ls'):
+        listDir(client, path)
+    if (args.operation == 'rm'):
+        deleteDir(client, path)
+    if (args.operation == 'cp'):
+        uploadFile(client, path, local)
+    if (args.operation == 'mv'):
+        uploadFile(client, path, local)
+
+
+    sendMessage(client, 'QUIT' + '\r\n')
+    
+
+
+if __name__ == "__main__":
+    main()
