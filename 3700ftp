@@ -35,12 +35,12 @@ def downloadFile(client, path, local):
     s.connect((ip, port))
     sendMessage(client, 'RETR ' + path + '\r\n')
     with open(local, 'wb') as file:
-        fileData = s.recv(BUFFER_SIZE)
-        while fileData:
-            file.write(fileData)
-            fileData = s.recv(BUFFER_SIZE)
-        receiveMessage(client)
-    receiveMessage(s)
+        while True:
+            data = s.recv(BUFFER_SIZE)
+            if not data:
+                break
+            file.write(data)
+        
     s.close()
 
 def uploadFile(client, path, local):
@@ -134,9 +134,15 @@ def main():
     if (args.operation == 'rm'):
         deleteDir(client, path)
     if (args.operation == 'cp'):
-        uploadFile(client, path, local)
+        if (args.arg1).startswith(('ftp://')):
+            downloadFile(client, path, local)
+        else:
+            uploadFile(client, path, local)
     if (args.operation == 'mv'):
-        uploadFile(client, path, local)
+        if (args.arg1).startswith(('ftp://')):
+            downloadFile(client, path, local)
+        else:
+            uploadFile(client, path, local)
 
 
     sendMessage(client, 'QUIT' + '\r\n')
