@@ -5,6 +5,14 @@ import urllib.parse
 
 BUFFER_SIZE = 4096
 
+# Set up the control channel by sending the commands needed to configure it
+def setUp(client):
+    sendMessage(client, 'TYPE I\r\n')
+    sendMessage(client, 'MODE S\r\n')
+    sendMessage(client, 'STRU F\r\n')
+
+# Sending the PASV command to get the ip and port number 
+# Return ip number of data channel and the port number
 def openDataChannel(client):
     response = sendMessage(client, 'PASV\r\n')
     start = response.find('(')
@@ -21,6 +29,7 @@ def openDataChannel(client):
     print(port)
     return ip, port
 
+# Sending the LIST command to the control channel
 def listDir(client, path):
     ip, port = openDataChannel(client)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,6 +38,8 @@ def listDir(client, path):
     receiveMessage(s)
     s.close()
 
+# download a file by sending RETR to the control channel
+# 
 def downloadFile(client, path, local):
     ip, port = openDataChannel(client)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,9 +51,10 @@ def downloadFile(client, path, local):
             if not data:
                 break
             file.write(data)
-        
     s.close()
 
+# Upload a file by sending STOR to the control channel
+#
 def uploadFile(client, path, local):
     ip, port = openDataChannel(client)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -55,36 +67,39 @@ def uploadFile(client, path, local):
             fileData = file.read(BUFFER_SIZE)
     s.close()
 
+# Delete a file in the ftp channel by sending a DELE command to control channel
 def deleteDir(client, path):
     sendMessage(client, 'DELE ' + path + '\r\n')
 
+# Loging in to the FTP server with the provided username and password
 def login(client, username, password):
     sendMessage(client, 'USER ' + username + '\r\n')
     sendMessage(client, 'PASS ' + password + '\r\n')
 
+# Make a directory on the FTP server
 def makeDir(client, path):
     sendMessage(client, 'MKD ' + path + '\r\n')
 
+# Remove a directory from the FTP server
 def removeDir(client, path):
     sendMessage(client, 'RMD ' + path + '\r\n')
 
+# Read a message from the control channel OR the data channel
 def receiveMessage(sock):
     response = sock.recv(BUFFER_SIZE).decode()
     print(response)
     return response
 
+# Send a message to the control channel
 def sendMessage(sock, command):
     print("Sending:", command)
     sock.send(command.encode())
     response = receiveMessage(sock)
     return response
 
-
-#./3700ftp2 ls ftp://asvhigh:37b336ec59c0714db1c131c2d419a5577725c4b50a71866cf33de37f40a5a100@ftp.3700.network/
-def main():
-    # Create the parser
+def createParser():
     parser = argparse.ArgumentParser(prog='Project 2',
-                                     description='Read in the username and server to solve a random Wordle puzzle',)
+                                     description='Sending commands to FTP server',)
 
     # Positional arguments
     parser.add_argument("operation", type=str, help="Name of command")
@@ -92,8 +107,13 @@ def main():
     parser.add_argument('arg2', nargs='?', default=None, help='The second argument (optional)')
     # Parse the arguments
     args = parser.parse_args()
+    return args
 
-    # Use the arguments
+# main for handling the workflow of sending commands to the ftp servers and file handling
+# my usercommand should be: ./3700ftp2 ls ftp://asvhigh:37b336ec59c0714db1c131c2d419a5577725c4b50a71866cf33de37f40a5a100@ftp.3700.network/
+def main():
+    # Create the parser and arguments for setting up server
+    args = createParser()
     if (args.arg1).startswith(('ftp://')):
         parsed_url = urllib.parse.urlparse(args.arg1)
         local = args.arg2
@@ -113,17 +133,12 @@ def main():
  
     # set up the client
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     client.connect((hostname, port))
     response = client.recv(BUFFER_SIZE)
     print(response)
-
     # log in with the info
     login(client, username, password)
-
-    sendMessage(client, 'TYPE I\r\n')
-    sendMessage(client, 'MODE S\r\n')
-    sendMessage(client, 'STRU F\r\n')
+    setUp(client)
     
     if (args.operation == 'mkdir'):
         makeDir(client, path)
@@ -143,11 +158,7 @@ def main():
             downloadFile(client, path, local)
         else:
             uploadFile(client, path, local)
-
-
     sendMessage(client, 'QUIT' + '\r\n')
-    
-
 
 if __name__ == "__main__":
     main()
