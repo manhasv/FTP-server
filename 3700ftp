@@ -124,8 +124,9 @@ def main():
     username = parsed_url.username if parsed_url.username else 'anonymous'
     password = parsed_url.password if parsed_url.password else ''
     path = parsed_url.path
-    print("Host: "+ hostname + " with Path: " + path + " with Port: " + port + " with Password " + password)
- 
+    print("Host: "+ hostname + " with Path: " + path + " with Password " + password)
+    print(port)
+
     # set up the client
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((hostname, port))
